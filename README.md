@@ -1,6 +1,6 @@
 # Kernel Clean
 
-Keep GRUB and kernel list up to date. For CentOS 7.
+Keep GRUB default kernel up to date, and prune installed kernels on CentOS 7.
 
 ## Description
 
@@ -11,15 +11,17 @@ about whether or not to set the newest kernel as default for future boots.
 
 ## Getting Started
 
-Clone the repository. Install (to system-Perl) the Perl module Sort::Versions
+* Clone the repository.
+
+* Install the Perl module Sort::Versions to system Perl.
 
 ```
 yum install perl-Sort-Versions
 ```
 
-Copy `bin/kerclean` into a location in your `$PATH`. I prefer `~/bin/`.
+* Copy `bin/kerclean` into a location in your `$PATH`. I prefer `~/bin/`.
 
-To run:
+* To run:
 
 ```
 $ kerclean
