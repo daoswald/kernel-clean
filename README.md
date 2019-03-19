@@ -19,7 +19,19 @@ about whether or not to set the newest kernel as default for future boots.
 yum install perl-Sort-Versions
 ```
 
-* Copy `bin/kerclean` into a location in your `$PATH`. I prefer `~/bin/`.
+* Copy `bin/kerclean` into a location in your `$PATH`. I prefer `~/bin/`.  Assuming the repository has been
+cloned to `~/repos/kernel-clean/` and that `~/bin/`  is in your `$PATH`:
+
+```
+cp ~/repos/kernel-clean/bin/kerclean ~/bin/kerclean
+```
+
+* Or instead of copying into a location in your path (and having to remember to do so when versions update),
+use a symlink.
+
+```
+ln -s ~/repos/kernel-clean/bin/kerclean ~/bin/kerclean
+```
 
 * To run:
 
