@@ -1,0 +1,100 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use ExtUtils::MakeMaker qw(prompt);
+use Sort::Versions; # sudo yum install perl-Sort-Versions if this isn't available on target system.
+
+use constant GRUB2_CFG => '/etc/grub2.cfg';
+
+__PACKAGE__->main();
+
+exit(0);
+
+sub main {
+
+    exec 'sudo', $0 if getpwuid($<) ne 'root';
+
+    my @kernels      = kernels_list(GRUB2_CFG);
+    my $current      = kernel_current();
+    my $grub_default = grub_default();
+    my $def_idx      = kernel_index($grub_default, @kernels);
+    my $cur_idx      = kernel_index($current, @kernels);
+
+    print scalar(@kernels), " kernels found:\n";
+    foreach my $ix (0 .. $#kernels) {
+        printf "%3s %3s (%u) %s\n",
+            ($cur_idx == $ix ? '(c)' : ''),
+            ($def_idx == $ix ? '(d)' : ''),
+            $ix,
+            $kernels[$ix];
+    }
+    print "\n[  (c) Currently active kernel.    (d) Default grub kernel.  ]\n\n";
+
+    my $best_idx = (sort {kernel_compare($kernels[$b], $kernels[$a])} 0..$#kernels)[0];
+
+    if ($def_idx ne $best_idx) {
+        my $y = prompt("Default kernel for grub is ($kernels[$def_idx]).\nNewest kernel detected is ($kernels[$best_idx]).\nSet default to $kernels[$best_idx]?", 'y');
+        sys("sudo grub2-set-default $best_idx") if $y =~ m/^y/i;
+    }
+
+    if (scalar @kernels > 5) {
+        my $y = prompt("There are " . scalar(@kernels) . " kernels installed. Remove old kernels?", 'y');
+        sys('sudo package-cleanup --oldkernels --count=2 -y') if $y =~ m/^y/i;
+    }
+}
+
+sub sys {
+   my $command = shift;
+   chomp(my $resp = `$command`);
+   return $resp;
+}
+
+sub kernels_list {
+    my $path = shift;
+    open my $infh, '<', $path or die "Failed to open " . $path . ": $!\n";
+    chomp(my @lines = <$infh>);
+    @lines = grep {m/x86/} @lines;
+    return map {m/menuentry\s'[^(]+\(([^')]+)\)/ ? $1 : ()} @lines;
+};
+
+sub grub_default {
+    chomp(my $def = sys('sudo grub2-editenv --verbose list'));
+    return $1 if $def =~ m/^saved_entry=(\d+)$/;
+
+    my $re = qr/
+        saved_entry=CentOS\sLinux\s\(
+        ( [^)]+ )
+        \)
+    /x;
+
+    if ($def =~ m/$re/x) {
+        return $1;
+    }
+    else {
+        die "Unable to parse grub default ($def)\n";
+    }
+}
+
+sub kernel_current {
+    return sys('uname -r');
+}
+
+sub kernel_index {
+    my ($def, @all) = @_;
+    if ($def =~ m/^\d+$/ && $def < scalar(@all)) {
+        return $def;
+    }
+    else {
+        my($found) = grep {$all[$_] eq $def} 0 .. $#all;
+        die "Unable to determine current default kernel from $def.\n" unless defined $found;
+        return $found;
+    }
+}
+
+sub kernel_compare {
+    my ($left, $right) = @_;
+    my ($lversion) = $left  =~ m/^((?:(?:\d+|rc\d+)[._-]?)+)[._-]/;
+    my ($rversion) = $right =~ m/^((?:(?:\d+|rc\d+)[._-]?)+)[._-]/;
+    return versioncmp($left, $right);
+}
